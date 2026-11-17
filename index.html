@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="id" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#090d16" />
+  <title>CryptoSim Live PWA</title>
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="apple-touch-icon" href="https://assets.coingecko.com/coins/images/1/large/bitcoin.png" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap');
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background-color: #090d16;
+      color: #f1f5f9;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .font-mono-num { font-family: 'JetBrains Mono', monospace; }
+    .glass {
+      background: rgba(17, 25, 40, 0.72);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    @keyframes flashGreen {
+      0% { background-color: rgba(16, 185, 129, 0.28); }
+      100% { background-color: transparent; }
+    }
+    @keyframes flashRed {
+      0% { background-color: rgba(244, 63, 94, 0.28); }
+      100% { background-color: transparent; }
+    }
+    .flash-up { animation: flashGreen 0.55s ease-out; }
+    .flash-down { animation: flashRed 0.55s ease-out; }
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 99px; }
+  </style>
+</head>
+<body class="min-h-screen pb-24 selection:bg-emerald-500/30">
+
+  <!-- Top Navbar -->
+  <header class="sticky top-0 z-30 glass border-b border-slate-800/80 px-4 py-3">
+    <div class="max-w-lg mx-auto flex items-center justify-between">
+      <div class="flex items-center gap-2.5">
+        <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-emerald-500 to-cyan-400 flex items-center justify-center font-bold text-slate-950 text-sm shadow-lg shadow-emerald-500/20">
+          ₿
+        </div>
+        <div>
+          <h1 class="text-sm font-bold tracking-tight text-white flex items-center gap-1.5">
+            CryptoSim
+            <span id="wsBadge" class="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/30">
+              <span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span> Connecting
+            </span>
+          </h1>
+          <p id="kursInfo" class="text-[11px] text-slate-400 font-mono-num">1 USDT ≈ Rp 16.300</p>
+        </div>
+      </div>
+
+      <button id="currencyToggle" onclick="toggleCurrency()" class="px-3 py-1.5 rounded-lg glass text-xs font-semibold text-cyan-300 hover:bg-slate-800 transition">
+        IDR
+      </button>
+    </div>
+  </header>
+
+  <main class="max-w-lg mx-auto px-4 pt-4 space-y-4">
+
+    <!-- Portfolio Summary Card -->
+    <section class="glass rounded-2xl p-4 relative overflow-hidden">
+      <div class="absolute -right-10 -top-10 w-36 h-36 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none"></div>
+      <div class="flex justify-between items-start">
+        <div>
+          <p class="text-xs text-slate-400 font-medium">Total Estimasi Aset</p>
+          <h2 id="totalEquityDisplay" class="text-2xl font-bold font-mono-num text-white mt-0.5">Rp 29.000.000</h2>
+        </div>
+        <button onclick="resetPortfolio()" class="text-[11px] text-slate-400 hover:text-rose-400 underline underline-offset-2 transition">
+          Reset Rp 29 Jt
+        </button>
+      </div>
+
+      <div class="grid grid-cols-2 gap-3 mt-4 pt-3 border-t border-slate-800/80">
+        <div>
+          <p class="text-[11px] text-slate-400">Saldo Tunai Tersedia</p>
+          <p id="cashBalanceDisplay" class="text-sm font-semibold font-mono-num text-slate-200 mt-0.5">Rp 29.000.000</p>
+        </div>
+        <div>
+          <p class="text-[11px] text-slate-400">Total Profit / Loss</p>
+          <p id="totalPnlDisplay" class="text-sm font-semibold font-mono-num text-emerald-400 mt-0.5">+Rp 0 (0.00%)</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Tab Navigation -->
+    <div class="grid grid-cols-3 gap-1.5 p-1 glass rounded-xl">
+      <button onclick="switchTab('market')" id="tab-market" class="py-2 rounded-lg text-xs font-semibold bg-emerald-500 text-slate-950 transition">
+        Pasar Live
+      </button>
+      <button onclick="switchTab('portfolio')" id="tab-portfolio" class="py-2 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition">
+        Portofolio (<span id="holdingCount">0</span>)
+      </button>
+      <button onclick="switchTab('history')" id="tab-history" class="py-2 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition">
+        Riwayat
+      </button>
+    </div>
+
+    <!-- Tab 1: Market List -->
+    <section id="view-market" class="space-y-2.5">
+      <div class="flex items-center justify-between px-1">
+        <span class="text-xs text-slate-400">Harga Real-Time (Binance WS)</span>
+        <span id="cgStatus" class="text-[11px] text-slate-500">CoinGecko: Memuat...</span>
+      </div>
+      <div id="coinList" class="space-y-2"></div>
+    </section>
+
+    <!-- Tab 2: Portfolio Holdings -->
+    <section id="view-portfolio" class="hidden space-y-2.5">
+      <div id="portfolioList" class="space-y-2"></div>
+    </section>
+
+    <!-- Tab 3: Transaction History -->
+    <section id="view-history" class="hidden space-y-2.5">
+      <div id="historyList" class="space-y-2"></div>
+    </section>
+
+  </main>
+
+  <!-- Trade Modal -->
+  <div id="tradeModal" class="fixed inset-0 z-50 hidden items-end sm:items-center justify-center bg-black/75 backdrop-blur-sm p-3">
+    <div class="glass w-full max-w-md rounded-2xl p-5 border border-slate-700/80 space-y-4">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2.5">
+          <img id="modalCoinImg" src="" alt="" class="w-8 h-8 rounded-full bg-slate-800" />
+          <div>
+            <h3 id="modalCoinName" class="text-base font-bold text-white">Bitcoin</h3>
+            <p id="modalLivePrice" class="text-xs font-mono-num text-emerald-400">Rp 0</p>
+          </div>
+        </div>
+        <button onclick="closeTradeModal()" class="w-8 h-8 rounded-full bg-slate-800/80 text-slate-400 hover:text-white flex items-center justify-center">✕</button>
+      </div>
+
+      <!-- Buy / Sell Switch -->
+      <div class="grid grid-cols-2 gap-2 p-1 bg-slate-900/90 rounded-xl border border-slate-800">
+        <button id="btnModeBuy" onclick="setTradeMode('BUY')" class="py-2 rounded-lg text-xs font-bold bg-emerald-500 text-slate-950 transition">BELI</button>
+        <button id="btnModeSell" onclick="setTradeMode('SELL')" class="py-2 rounded-lg text-xs font-bold text-slate-400 transition">JUAL</button>
+      </div>
+
+      <div class="space-y-2">
+        <div class="flex justify-between text-xs text-slate-400">
+          <span id="availableLabel">Saldo Tersedia:</span>
+          <span id="availableValue" class="font-mono-num text-slate-200">Rp 29.000.000</span>
+        </div>
+
+        <div class="relative">
+          <input type="number" id="tradeAmountInput" placeholder="Masukkan nominal (IDR)" oninput="updateTradePreview()" class="w-full bg-slate-900/90 border border-slate-700 rounded-xl px-3.5 py-3 text-sm font-mono-num text-white focus:outline-none focus:border-emerald-500" />
+          <span id="inputUnitLabel" class="absolute right-3.5 top-3.5 text-xs font-semibold text-slate-400">IDR</span>
+        </div>
+
+        <!-- Quick Percent Buttons -->
+        <div class="grid grid-cols-4 gap-2 pt-1">
+          <button onclick="setPercentAmount(0.25)" class="py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-xs font-mono-num text-slate-300">25%</button>
+          <button onclick="setPercentAmount(0.50)" class="py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-xs font-mono-num text-slate-300">50%</button>
+          <button onclick="setPercentAmount(0.75)" class="py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-xs font-mono-num text-slate-300">75%</button>
+          <button onclick="setPercentAmount(1.00)" class="py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-xs font-mono-num text-slate-300">100%</button>
+        </div>
+      </div>
+
+      <div class="bg-slate-900/70 rounded-xl p-3 border border-slate-800/80 flex justify-between items-center">
+        <span class="text-xs text-slate-400" id="previewLabel">Estimasi Dapat Koin:</span>
+        <span id="previewValue" class="text-sm font-bold font-mono-num text-white">0.000000 BTC</span>
+      </div>
+
+      <button id="executeTradeBtn" onclick="executeTrade()" class="w-full py-3 rounded-xl font-bold text-sm bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-lg shadow-emerald-500/20 transition">
+        Konfirmasi Beli
+      </button>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 hidden px-4 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-xs font-medium text-white shadow-xl"></div>
+
+  <script>
+    // ==========================================
+    // 1. MASUKKAN COINGECKO DEMO KEY (BASE64) DI SINI
+    // ==========================================
+    // Cara encode: btoa("CG-KODE_API_KEY_KAMU")
+    const CG_KEY_B64 = "Q0ctTExXREp6bVJNd01YVHJZc29nSFBoWmty";
+
+    function getDecodedCgKey() {
+      if (!CG_KEY_B64 || CG_KEY_B64 === "MASUKKAN_BASE64_KEY_KAMU_DI_SINI") return "";
+      try {
+        return atob(CG_KEY_B64.trim());
+      } catch (e) {
+        return "";
+      }
+    }
+
+    const INITIAL_CAPITAL_IDR = 29000000; // Modal awal Rp 29.000.000
+    let usdtToIdr = 16300;
+    let displayCurrency = 'IDR';
+    let activeTab = 'market';
+
+    const COINS = [
+      { id: 'bitcoin', symbol: 'BTC', pair: 'btcusdt', name: 'Bitcoin', img: 'https://assets.coingecko.com/coins/images/1/small/bitcoin.png', priceUsd: 0, change24h: 0 },
+      { id: 'ethereum', symbol: 'ETH', pair: 'ethusdt', name: 'Ethereum', img: 'https://assets.coingecko.com/coins/images/279/small/ethereum.png', priceUsd: 0, change24h: 0 },
+      { id: 'solana', symbol: 'SOL', pair: 'solusdt', name: 'Solana', img: 'https://assets.coingecko.com/coins/images/4128/small/solana.png', priceUsd: 0, change24h: 0 },
+      { id: 'binancecoin', symbol: 'BNB', pair: 'bnbusdt', name: 'BNB', img: 'https://assets.coingecko.com/coins/images/825/small/bnb-icon2_2x.png', priceUsd: 0, change24h: 0 },
+      { id: 'ripple', symbol: 'XRP', pair: 'xrpusdt', name: 'XRP', img: 'https://assets.coingecko.com/coins/images/44/small/xrp-symbol-white-128.png', priceUsd: 0, change24h: 0 },
+      { id: 'dogecoin', symbol: 'DOGE', pair: 'dogeusdt', name: 'Dogecoin', img: 'https://assets.coingecko.com/coins/images/5/small/dogecoin.png', priceUsd: 0, change24h: 0 },
+      { id: 'cardano', symbol: 'ADA', pair: 'adausdt', name: 'Cardano', img: 'https://assets.coingecko.com/coins/images/975/small/cardano.png', priceUsd: 0, change24h: 0 },
+      { id: 'sui', symbol: 'SUI', pair: 'suiusdt', name: 'Sui', img: 'https://assets.coingecko.com/coins/images/26375/small/sui_asset.jpeg', priceUsd: 0, change24h: 0 }
+    ];
+
+    let state = JSON.parse(localStorage.getItem('cryptosim_state_v1')) || {
+      cashIdr: INITIAL_CAPITAL_IDR,
+      holdings: {},
+      history: []
+    };
+
+    let selectedCoin = null;
+    let tradeMode = 'BUY';
+
+    function saveState() {
+      localStorage.setItem('cryptosim_state_v1', JSON.stringify(state));
+    }
+
+    // ==========================================
+    // 2. FORMATTER MATA UANG
+    // ==========================================
+    function formatMoney(idrAmount) {
+      if (displayCurrency === 'IDR') {
+        return new Intl.NumberFormat('id-ID', {
+          style: 'currency',
+          currency: 'IDR',
+          maximumFractionDigits: idrAmount < 1000 ? 2 : 0
+        }).format(idrAmount);
+      } else {
+        const usd = idrAmount / usdtToIdr;
+        return new Intl.NumberFormat('en-US', {
+          style: 'currency',
+          currency: 'USD',
+          minimumFractionDigits: usd < 1 ? 4 : 2,
+          maximumFractionDigits: usd < 1 ? 4 : 2
+        }).format(usd);
+      }
+    }
+
+    function toggleCurrency() {
+      displayCurrency = displayCurrency === 'IDR' ? 'USD' : 'IDR';
+      document.getElementById('currencyToggle').innerText = displayCurrency;
+      renderAll();
+    }
+
+    // ==========================================
+    // 3. KONEKSI API: INDODAX, COINGECKO, BINANCE WS
+    // ==========================================
+    async function fetchUsdtIdrRate() {
+      try {
+        const res = await fetch('https://indodax.com/api/ticker/usdtidr');
+        const data = await res.json();
+        if (data?.ticker?.last) {
+          usdtToIdr = parseFloat(data.ticker.last);
+          document.getElementById('kursInfo').innerText = `1 USDT = Rp ${usdtToIdr.toLocaleString('id-ID')}`;
+          renderAll();
+        }
+      } catch (err) {
+        console.warn('Gagal mengambil kurs Indodax, memakai kurs cadangan.');
+      }
+    }
+
+    async function fetchCoinGeckoMetadata() {
+      const ids = COINS.map(c => c.id).join(',');
+      const apiKey = getDecodedCgKey();
+      let url = `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${ids}&price_change_percentage=24h`;
+      if (apiKey) {
+        url += `&x_cg_demo_api_key=${encodeURIComponent(apiKey)}`;
+      }
+
+      try {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+
+        data.forEach(item => {
+          const target = COINS.find(c => c.id === item.id);
+          if (target) {
+            target.img = item.image;
+            if (!target.priceUsd) target.priceUsd = item.current_price;
+            target.change24h = item.price_change_percentage_24h || 0;
+          }
+        });
+
+        document.getElementById('cgStatus').innerText = apiKey ? 'CoinGecko: Demo Key Aktif' : 'CoinGecko: Publik Aktif';
+        document.getElementById('cgStatus').className = 'text-[11px] text-emerald-400';
+        renderAll();
+      } catch (err) {
+        document.getElementById('cgStatus').innerText = 'CoinGecko: Fallback Mode';
+        document.getElementById('cgStatus').className = 'text-[11px] text-amber-400';
+      }
+    }
+
+    function connectBinanceWebSocket() {
+      const streams = COINS.map(c => `${c.pair}@miniTicker`).join('/');
+      const ws = new WebSocket(`wss://stream.binance.com:9443/stream?streams=${streams}`);
+      const badge = document.getElementById('wsBadge');
+
+      ws.onopen = () => {
+        badge.className = 'inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30';
+        badge.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span> LIVE';
+      };
+
+      ws.onmessage = (event) => {
+        const msg = JSON.parse(event.data);
+        if (!msg.data) return;
+
+        const pairLower = msg.data.s.toLowerCase();
+        const newPriceUsd = parseFloat(msg.data.c);
+        const openPriceUsd = parseFloat(msg.data.o);
+        const coin = COINS.find(c => c.pair === pairLower);
+
+        if (coin) {
+          const prevPrice = coin.priceUsd;
+          coin.priceUsd = newPriceUsd;
+          if (openPriceUsd > 0) {
+            coin.change24h = ((newPriceUsd - openPriceUsd) / openPriceUsd) * 100;
+          }
+
+          const priceEl = document.getElementById(`price-${coin.symbol}`);
+          const rowEl = document.getElementById(`row-${coin.symbol}`);
+          const changeEl = document.getElementById(`change-${coin.symbol}`);
+
+          if (priceEl && rowEl) {
+            priceEl.innerText = formatMoney(coin.priceUsd * usdtToIdr);
+            if (prevPrice > 0 && newPriceUsd !== prevPrice) {
+              rowEl.classList.remove('flash-up', 'flash-down');
+              void rowEl.offsetWidth;
+              rowEl.classList.add(newPriceUsd > prevPrice ? 'flash-up' : 'flash-down');
+            }
+          }
+
+          if (changeEl) {
+            const isPos = coin.change24h >= 0;
+            changeEl.innerText = `${isPos ? '+' : ''}${coin.change24h.toFixed(2)}%`;
+            changeEl.className = `text-[11px] font-mono-num ${isPos ? 'text-emerald-400' : 'text-rose-400'}`;
+          }
+
+          if (selectedCoin && selectedCoin.symbol === coin.symbol) {
+            document.getElementById('modalLivePrice').innerText = formatMoney(coin.priceUsd * usdtToIdr);
+            updateTradePreview();
+          }
+
+          updatePortfolioSummary();
+          if (activeTab === 'portfolio') renderPortfolio();
+        }
+      };
+
+      ws.onclose = () => {
+        badge.className = 'inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-rose-500/15 text-rose-400 border border-rose-500/30';
+        badge.innerHTML = 'Reconnecting...';
+        setTimeout(connectBinanceWebSocket, 3000);
+      };
+    }
+
+    // ==========================================
+    // 4. LOGIKA SIMULASI TRADING & PORTOFOLIO
+    // ==========================================
+    function updatePortfolioSummary() {
+      let assetValueIdr = 0;
+      const symbols = Object.keys(state.holdings);
+      document.getElementById('holdingCount').innerText = symbols.length;
+
+      symbols.forEach(sym => {
+        const hold = state.holdings[sym];
+        const coin = COINS.find(c => c.symbol === sym);
+        if (coin && coin.priceUsd > 0) {
+          assetValueIdr += hold.amount * (coin.priceUsd * usdtToIdr);
+        } else {
+          assetValueIdr += hold.amount * hold.avgBuyIdr;
+        }
+      });
+
+      const totalEquity = state.cashIdr + assetValueIdr;
+      const totalPnl = totalEquity - INITIAL_CAPITAL_IDR;
+      const pnlPct = (totalPnl / INITIAL_CAPITAL_IDR) * 100;
+
+      document.getElementById('totalEquityDisplay').innerText = formatMoney(totalEquity);
+      document.getElementById('cashBalanceDisplay').innerText = formatMoney(state.cashIdr);
+
+      const pnlEl = document.getElementById('totalPnlDisplay');
+      const sign = totalPnl >= 0 ? '+' : '';
+      pnlEl.innerText = `${sign}${formatMoney(totalPnl)} (${sign}${pnlPct.toFixed(2)}%)`;
+      pnlEl.className = `text-sm font-semibold font-mono-num mt-0.5 ${totalPnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
+    }
+
+    function openTradeModal(symbol) {
+      selectedCoin = COINS.find(c => c.symbol === symbol);
+      if (!selectedCoin || selectedCoin.priceUsd <= 0) {
+        showToast('Menunggu data harga live...');
+        return;
+      }
+      document.getElementById('modalCoinImg').src = selectedCoin.img;
+      document.getElementById('modalCoinName').innerText = `${selectedCoin.name} (${selectedCoin.symbol})`;
+      document.getElementById('modalLivePrice').innerText = formatMoney(selectedCoin.priceUsd * usdtToIdr);
+      document.getElementById('tradeAmountInput').value = '';
+      setTradeMode('BUY');
+      const el = document.getElementById('tradeModal');
+      el.classList.remove('hidden');
+      el.classList.add('flex');
+    }
+
+    function closeTradeModal() {
+      const el = document.getElementById('tradeModal');
+      el.classList.add('hidden');
+      el.classList.remove('flex');
+    }
+
+    function setTradeMode(mode) {
+      tradeMode = mode;
+      const btnBuy = document.getElementById('btnModeBuy');
+      const btnSell = document.getElementById('btnModeSell');
+      const execBtn = document.getElementById('executeTradeBtn');
+      const input = document.getElementById('tradeAmountInput');
+
+      if (mode === 'BUY') {
+        btnBuy.className = 'py-2 rounded-lg text-xs font-bold bg-emerald-500 text-slate-950 transition';
+        btnSell.className = 'py-2 rounded-lg text-xs font-bold text-slate-400 transition';
+        execBtn.className = 'w-full py-3 rounded-xl font-bold text-sm bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-lg shadow-emerald-500/20 transition';
+        execBtn.innerText = `Konfirmasi Beli ${selectedCoin.symbol}`;
+        document.getElementById('availableLabel').innerText = 'Saldo Tunai Tersedia:';
+        document.getElementById('availableValue').innerText = formatMoney(state.cashIdr);
+        document.getElementById('inputUnitLabel').innerText = 'IDR';
+        input.placeholder = 'Nominal beli dalam Rupiah (IDR)';
+      } else {
+        btnSell.className = 'py-2 rounded-lg text-xs font-bold bg-rose-500 text-white transition';
+        btnBuy.className = 'py-2 rounded-lg text-xs font-bold text-slate-400 transition';
+        execBtn.className = 'w-full py-3 rounded-xl font-bold text-sm bg-rose-500 hover:bg-rose-400 text-white shadow-lg shadow-rose-500/20 transition';
+        execBtn.innerText = `Konfirmasi Jual ${selectedCoin.symbol}`;
+        const owned = state.holdings[selectedCoin.symbol]?.amount || 0;
+        document.getElementById('availableLabel').innerText = `Saldo ${selectedCoin.symbol} Dimiliki:`;
+        document.getElementById('availableValue').innerText = `${owned.toFixed(6)} ${selectedCoin.symbol}`;
+        document.getElementById('inputUnitLabel').innerText = selectedCoin.symbol;
+        input.placeholder = `Jumlah koin ${selectedCoin.symbol} dijual`;
+      }
+      input.value = '';
+      updateTradePreview();
+    }
+
+    function setPercentAmount(pct) {
+      const input = document.getElementById('tradeAmountInput');
+      if (tradeMode === 'BUY') {
+        input.value = Math.floor(state.cashIdr * pct);
+      } else {
+        const owned = state.holdings[selectedCoin.symbol]?.amount || 0;
+        input.value = (owned * pct).toFixed(6);
+      }
+      updateTradePreview();
+    }
+
+    function updateTradePreview() {
+      const val = parseFloat(document.getElementById('tradeAmountInput').value) || 0;
+      const coinPriceIdr = selectedCoin.priceUsd * usdtToIdr;
+
+      if (tradeMode === 'BUY') {
+        document.getElementById('previewLabel').innerText = 'Estimasi Koin Didapat:';
+        const coinsGot = coinPriceIdr > 0 ? val / coinPriceIdr : 0;
+        document.getElementById('previewValue').innerText = `${coinsGot.toFixed(6)} ${selectedCoin.symbol}`;
+      } else {
+        document.getElementById('previewLabel').innerText = 'Estimasi Tunai Diterima:';
+        const idrGot = val * coinPriceIdr;
+        document.getElementById('previewValue').innerText = formatMoney(idrGot);
+      }
+    }
+
+    function executeTrade() {
+      const val = parseFloat(document.getElementById('tradeAmountInput').value);
+      if (!val || val <= 0) {
+        showToast('Masukkan jumlah yang valid.');
+        return;
+      }
+
+      const coinPriceIdr = selectedCoin.priceUsd * usdtToIdr;
+      const sym = selectedCoin.symbol;
+
+      if (tradeMode === 'BUY') {
+        if (val > state.cashIdr) {
+          showToast('Saldo Rupiah tidak mencukupi!');
+          return;
+        }
+        const coinQty = val / coinPriceIdr;
+        const currentHold = state.holdings[sym] || { amount: 0, avgBuyIdr: 0 };
+        const totalCost = (currentHold.amount * currentHold.avgBuyIdr) + val;
+        const newAmount = currentHold.amount + coinQty;
+
+        state.cashIdr -= val;
+        state.holdings[sym] = {
+          amount: newAmount,
+          avgBuyIdr: totalCost / newAmount
+        };
+
+        state.history.unshift({
+          type: 'BUY',
+          symbol: sym,
+          coinAmount: coinQty,
+          idrTotal: val,
+          priceIdr: coinPriceIdr,
+          time: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+        });
+
+        showToast(`Berhasil beli ${coinQty.toFixed(5)} ${sym}`);
+      } else {
+        const currentHold = state.holdings[sym];
+        if (!currentHold || val > currentHold.amount + 0.000001) {
+          showToast(`Saldo ${sym} tidak mencukupi!`);
+          return;
+        }
+        const sellQty = Math.min(val, currentHold.amount);
+        const idrReceived = sellQty * coinPriceIdr;
+
+        state.cashIdr += idrReceived;
+        currentHold.amount -= sellQty;
+        if (currentHold.amount <= 0.0000001) {
+          delete state.holdings[sym];
+        }
+
+        state.history.unshift({
+          type: 'SELL',
+          symbol: sym,
+          coinAmount: sellQty,
+          idrTotal: idrReceived,
+          priceIdr: coinPriceIdr,
+          time: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+        });
+
+        showToast(`Berhasil jual ${sellQty.toFixed(5)} ${sym}`);
+      }
+
+      saveState();
+      closeTradeModal();
+      renderAll();
+    }
+
+    function resetPortfolio() {
+      if (!confirm('Reset portofolio dan kembalikan saldo ke Rp 29.000.000?')) return;
+      state = { cashIdr: INITIAL_CAPITAL_IDR, holdings: {}, history: [] };
+      saveState();
+      renderAll();
+      showToast('Saldo direset ke Rp 29.000.000');
+    }
+
+    // ==========================================
+    // 5. RENDER UI
+    // ==========================================
+    function renderMarket() {
+      const container = document.getElementById('coinList');
+      container.innerHTML = COINS.map(c => {
+        const idrPrice = c.priceUsd * usdtToIdr;
+        const isPos = c.change24h >= 0;
+        return `
+          <div id="row-${c.symbol}" onclick="openTradeModal('${c.symbol}')" class="glass rounded-xl p-3.5 flex items-center justify-between cursor-pointer hover:border-slate-600 transition active:scale-[0.99]">
+            <div class="flex items-center gap-3">
+              <img src="${c.img}" alt="${c.symbol}" class="w-9 h-9 rounded-full bg-slate-800 p-0.5" />
+              <div>
+                <h4 class="text-sm font-bold text-white">${c.name}</h4>
+                <span class="text-xs text-slate-400 font-medium">${c.symbol}/USDT</span>
+              </div>
+            </div>
+            <div class="text-right">
+              <p id="price-${c.symbol}" class="text-sm font-bold font-mono-num text-white">
+                ${c.priceUsd > 0 ? formatMoney(idrPrice) : 'Memuat...'}
+              </p>
+              <span id="change-${c.symbol}" class="text-[11px] font-mono-num ${isPos ? 'text-emerald-400' : 'text-rose-400'}">
+                ${isPos ? '+' : ''}${c.change24h.toFixed(2)}%
+              </span>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderPortfolio() {
+      const container = document.getElementById('portfolioList');
+      const symbols = Object.keys(state.holdings);
+
+      if (symbols.length === 0) {
+        container.innerHTML = `
+          <div class="glass rounded-2xl p-8 text-center space-y-2">
+            <p class="text-sm font-semibold text-slate-300">Belum ada aset crypto</p>
+            <p class="text-xs text-slate-400">Pilih koin di tab Pasar Live untuk mulai simulasi trading.</p>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = symbols.map(sym => {
+        const hold = state.holdings[sym];
+        const coin = COINS.find(c => c.symbol === sym);
+        const currentPriceIdr = coin ? coin.priceUsd * usdtToIdr : hold.avgBuyIdr;
+        const currentValueIdr = hold.amount * currentPriceIdr;
+        const costBasisIdr = hold.amount * hold.avgBuyIdr;
+        const pnlIdr = currentValueIdr - costBasisIdr;
+        const pnlPct = costBasisIdr > 0 ? (pnlIdr / costBasisIdr) * 100 : 0;
+        const isPos = pnlIdr >= 0;
+
+        return `
+          <div onclick="openTradeModal('${sym}')" class="glass rounded-xl p-3.5 space-y-2.5 cursor-pointer hover:border-slate-600 transition">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2.5">
+                <img src="${coin?.img || ''}" class="w-8 h-8 rounded-full bg-slate-800" />
+                <div>
+                  <h4 class="text-sm font-bold text-white">${sym}</h4>
+                  <p class="text-[11px] font-mono-num text-slate-400">${hold.amount.toFixed(6)} ${sym}</p>
+                </div>
+              </div>
+              <div class="text-right">
+                <p class="text-sm font-bold font-mono-num text-white">${formatMoney(currentValueIdr)}</p>
+                <p class="text-[11px] font-mono-num ${isPos ? 'text-emerald-400' : 'text-rose-400'}">
+                  ${isPos ? '+' : ''}${formatMoney(pnlIdr)} (${isPos ? '+' : ''}${pnlPct.toFixed(2)}%)
+                </p>
+              </div>
+            </div>
+            <div class="flex justify-between text-[11px] text-slate-400 pt-2 border-t border-slate-800/80 font-mono-num">
+              <span>Avg Beli: ${formatMoney(hold.avgBuyIdr)}</span>
+              <span>Harga Kini: ${formatMoney(currentPriceIdr)}</span>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderHistory() {
+      const container = document.getElementById('historyList');
+      if (state.history.length === 0) {
+        container.innerHTML = `
+          <div class="glass rounded-2xl p-8 text-center">
+            <p class="text-xs text-slate-400">Belum ada riwayat transaksi.</p>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = state.history.map(item => {
+        const isBuy = item.type === 'BUY';
+        return `
+          <div class="glass rounded-xl p-3 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <span class="px-2 py-1 rounded-md text-[10px] font-bold ${isBuy ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'}">
+                ${isBuy ? 'BELI' : 'JUAL'}
+              </span>
+              <div>
+                <p class="text-xs font-bold text-white">${item.coinAmount.toFixed(6)} ${item.symbol}</p>
+                <p class="text-[11px] text-slate-400 font-mono-num">@ ${formatMoney(item.priceIdr)} • ${item.time}</p>
+              </div>
+            </div>
+            <p class="text-xs font-bold font-mono-num text-slate-200">${formatMoney(item.idrTotal)}</p>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderAll() {
+      updatePortfolioSummary();
+      renderMarket();
+      renderPortfolio();
+      renderHistory();
+    }
+
+    // ==========================================
+    // 6. NAVIGASI TAB & TOAST
+    // ==========================================
+    function switchTab(tab) {
+      activeTab = tab;
+      ['market', 'portfolio', 'history'].forEach(t => {
+        document.getElementById(`view-${t}`).classList.toggle('hidden', t !== tab);
+        const btn = document.getElementById(`tab-${t}`);
+        if (t === tab) {
+          btn.className = 'py-2 rounded-lg text-xs font-semibold bg-emerald-500 text-slate-950 transition';
+        } else {
+          btn.className = 'py-2 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition';
+        }
+      });
+      renderAll();
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      toast.innerText = msg;
+      toast.classList.remove('hidden');
+      setTimeout(() => toast.classList.add('hidden'), 2600);
+    }
+
+    // ==========================================
+    // 7. REGISTRASI SERVICE WORKER & INISIALISASI
+    // ==========================================
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch(err => console.warn('SW gagal:', err));
+      });
+    }
+
+    renderAll();
+    fetchUsdtIdrRate();
+    fetchCoinGeckoMetadata();
+    connectBinanceWebSocket();
+  </script>
+</body>
+</html>
