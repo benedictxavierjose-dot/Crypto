@@ -119,9 +119,11 @@
 
   </main>
 
-  <!-- Trade Modal -->
-  <div id="tradeModal" class="fixed inset-0 z-50 hidden items-end sm:items-center justify-center bg-black/75 backdrop-blur-sm p-3">
-    <div class="glass w-full max-w-md rounded-2xl p-5 border border-slate-700/80 space-y-4">
+  <!-- Trade & Live Chart Modal -->
+  <div id="tradeModal" class="fixed inset-0 z-50 hidden items-end sm:items-center justify-center bg-black/80 backdrop-blur-sm p-3 overflow-y-auto">
+    <div class="glass w-full max-w-md rounded-2xl p-4 sm:p-5 border border-slate-700/80 space-y-3.5 my-auto">
+      
+      <!-- Modal Header -->
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-2.5">
           <img id="modalCoinImg" src="" alt="" class="w-8 h-8 rounded-full bg-slate-800" />
@@ -131,6 +133,43 @@
           </div>
         </div>
         <button onclick="closeTradeModal()" class="w-8 h-8 rounded-full bg-slate-800/80 text-slate-400 hover:text-white flex items-center justify-center">✕</button>
+      </div>
+
+      <!-- Live Price Chart Section -->
+      <div class="bg-slate-950/75 rounded-xl p-3 border border-slate-800/90 space-y-2">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span id="chartRangeLabel" class="text-[11px] font-medium text-slate-400">Grafik 15m</span>
+            <span id="avgLineLegend" class="hidden items-center gap-1 text-[10px] font-mono-num text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">
+              --- Avg Beli
+            </span>
+          </div>
+          <div class="flex gap-1">
+            <button onclick="changeChartInterval('15m')" data-tf="15m" class="tf-btn px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">15m</button>
+            <button onclick="changeChartInterval('1h')" data-tf="1h" class="tf-btn px-2 py-0.5 rounded text-[10px] font-semibold text-slate-400 hover:text-white">1H</button>
+            <button onclick="changeChartInterval('4h')" data-tf="4h" class="tf-btn px-2 py-0.5 rounded text-[10px] font-semibold text-slate-400 hover:text-white">4H</button>
+            <button onclick="changeChartInterval('1d')" data-tf="1d" class="tf-btn px-2 py-0.5 rounded text-[10px] font-semibold text-slate-400 hover:text-white">1D</button>
+          </div>
+        </div>
+
+        <div class="relative w-full h-36">
+          <canvas id="coinChartCanvas" class="w-full h-full block"></canvas>
+          <div id="chartLoading" class="absolute inset-0 flex items-center justify-center text-xs text-slate-400 bg-slate-950/60 rounded-lg">
+            Memuat grafik...
+          </div>
+        </div>
+      </div>
+
+      <!-- Holding Info Banner (Muncul jika koin sudah dimiliki) -->
+      <div id="modalHoldingBanner" class="hidden bg-slate-900/90 rounded-xl px-3 py-2 border border-slate-800 flex justify-between items-center text-xs">
+        <div>
+          <span class="text-slate-400 block text-[10px]">Posisi Dimiliki</span>
+          <span id="modalHoldQty" class="font-mono-num font-bold text-white">0 BTC</span>
+        </div>
+        <div class="text-right">
+          <span class="text-slate-400 block text-[10px]">Unrealized PnL</span>
+          <span id="modalHoldPnl" class="font-mono-num font-bold text-emerald-400">+Rp 0</span>
+        </div>
       </div>
 
       <!-- Buy / Sell Switch -->
@@ -146,12 +185,12 @@
         </div>
 
         <div class="relative">
-          <input type="number" id="tradeAmountInput" placeholder="Masukkan nominal (IDR)" oninput="updateTradePreview()" class="w-full bg-slate-900/90 border border-slate-700 rounded-xl px-3.5 py-3 text-sm font-mono-num text-white focus:outline-none focus:border-emerald-500" />
-          <span id="inputUnitLabel" class="absolute right-3.5 top-3.5 text-xs font-semibold text-slate-400">IDR</span>
+          <input type="number" id="tradeAmountInput" placeholder="Masukkan nominal (IDR)" oninput="updateTradePreview()" class="w-full bg-slate-900/90 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm font-mono-num text-white focus:outline-none focus:border-emerald-500" />
+          <span id="inputUnitLabel" class="absolute right-3.5 top-3 text-xs font-semibold text-slate-400">IDR</span>
         </div>
 
         <!-- Quick Percent Buttons -->
-        <div class="grid grid-cols-4 gap-2 pt-1">
+        <div class="grid grid-cols-4 gap-2 pt-0.5">
           <button onclick="setPercentAmount(0.25)" class="py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-xs font-mono-num text-slate-300">25%</button>
           <button onclick="setPercentAmount(0.50)" class="py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-xs font-mono-num text-slate-300">50%</button>
           <button onclick="setPercentAmount(0.75)" class="py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-xs font-mono-num text-slate-300">75%</button>
@@ -159,7 +198,7 @@
         </div>
       </div>
 
-      <div class="bg-slate-900/70 rounded-xl p-3 border border-slate-800/80 flex justify-between items-center">
+      <div class="bg-slate-900/70 rounded-xl p-2.5 border border-slate-800/80 flex justify-between items-center">
         <span class="text-xs text-slate-400" id="previewLabel">Estimasi Dapat Koin:</span>
         <span id="previewValue" class="text-sm font-bold font-mono-num text-white">0.000000 BTC</span>
       </div>
@@ -187,7 +226,7 @@
       }
     }
 
-    const INITIAL_CAPITAL_IDR = 29000000; // Modal awal Rp 29.000.000
+    const INITIAL_CAPITAL_IDR = 29000000;
     let usdtToIdr = 16300;
     let displayCurrency = 'IDR';
     let activeTab = 'market';
@@ -211,6 +250,8 @@
 
     let selectedCoin = null;
     let tradeMode = 'BUY';
+    let currentChartInterval = '15m';
+    let chartPricesUsd = []; // Menyimpan titik harga grafik koin aktif
 
     function saveState() {
       localStorage.setItem('cryptosim_state_v1', JSON.stringify(state));
@@ -241,6 +282,10 @@
       displayCurrency = displayCurrency === 'IDR' ? 'USD' : 'IDR';
       document.getElementById('currencyToggle').innerText = displayCurrency;
       renderAll();
+      if (selectedCoin) {
+        updateModalHoldingBanner();
+        drawCoinChart();
+      }
     }
 
     // ==========================================
@@ -336,9 +381,15 @@
             changeEl.className = `text-[11px] font-mono-num ${isPos ? 'text-emerald-400' : 'text-rose-400'}`;
           }
 
+          // Perbarui modal & titik ujung grafik secara real-time jika koin sedang dibuka
           if (selectedCoin && selectedCoin.symbol === coin.symbol) {
             document.getElementById('modalLivePrice').innerText = formatMoney(coin.priceUsd * usdtToIdr);
             updateTradePreview();
+            updateModalHoldingBanner();
+            if (chartPricesUsd.length > 0) {
+              chartPricesUsd[chartPricesUsd.length - 1] = newPriceUsd;
+              drawCoinChart();
+            }
           }
 
           updatePortfolioSummary();
@@ -354,7 +405,158 @@
     }
 
     // ==========================================
-    // 4. LOGIKA SIMULASI TRADING & PORTOFOLIO
+    // 4. GRAFIK HARGA LIVE (BINANCE KLINES + CANVAS)
+    // ==========================================
+    async function loadCoinChartData(symbolPair, interval) {
+      const loader = document.getElementById('chartLoading');
+      loader.classList.remove('hidden');
+      document.getElementById('chartRangeLabel').innerText = `Grafik ${interval.toUpperCase()}`;
+
+      try {
+        const res = await fetch(`https://api.binance.com/api/v3/klines?symbol=${symbolPair.toUpperCase()}&interval=${interval}&limit=45`);
+        const klines = await res.json();
+        chartPricesUsd = klines.map(k => parseFloat(k[4])); // Harga penutupan tiap candle
+        if (selectedCoin && selectedCoin.priceUsd > 0) {
+          chartPricesUsd[chartPricesUsd.length - 1] = selectedCoin.priceUsd;
+        }
+      } catch (err) {
+        // Fallback jika offline: gunakan harga terkini
+        const base = selectedCoin?.priceUsd || 100;
+        chartPricesUsd = Array.from({ length: 20 }, () => base);
+      } finally {
+        loader.classList.add('hidden');
+        drawCoinChart();
+      }
+    }
+
+    function changeChartInterval(interval) {
+      currentChartInterval = interval;
+      document.querySelectorAll('.tf-btn').forEach(btn => {
+        if (btn.dataset.tf === interval) {
+          btn.className = 'tf-btn px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';
+        } else {
+          btn.className = 'tf-btn px-2 py-0.5 rounded text-[10px] font-semibold text-slate-400 hover:text-white';
+        }
+      });
+      if (selectedCoin) {
+        loadCoinChartData(selectedCoin.pair, interval);
+      }
+    }
+
+    function drawCoinChart() {
+      const canvas = document.getElementById('coinChartCanvas');
+      if (!canvas || chartPricesUsd.length < 2) return;
+
+      const dpr = window.devicePixelRatio || 1;
+      const rect = canvas.getBoundingClientRect();
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+
+      const ctx = canvas.getContext('2d');
+      ctx.scale(dpr, dpr);
+
+      const width = rect.width;
+      const height = rect.height;
+      const padTop = 14;
+      const padBottom = 14;
+      const padLeft = 4;
+      const padRight = 4;
+
+      ctx.clearRect(0, 0, width, height);
+
+      // Cek apakah user memiliki koin ini untuk menampilkan garis Avg Buy
+      const holding = selectedCoin ? state.holdings[selectedCoin.symbol] : null;
+      const avgBuyUsd = holding ? (holding.avgBuyIdr / usdtToIdr) : null;
+      const avgLegend = document.getElementById('avgLineLegend');
+
+      let allValues = [...chartPricesUsd];
+      if (avgBuyUsd && avgBuyUsd > 0) {
+        allValues.push(avgBuyUsd);
+        avgLegend.classList.remove('hidden');
+        avgLegend.classList.add('inline-flex');
+      } else {
+        avgLegend.classList.add('hidden');
+        avgLegend.classList.remove('inline-flex');
+      }
+
+      const minVal = Math.min(...allValues);
+      const maxVal = Math.max(...allValues);
+      const range = maxVal - minVal || minVal * 0.01 || 1;
+
+      const getX = (idx) => padLeft + (idx / (chartPricesUsd.length - 1)) * (width - padLeft - padRight);
+      const getY = (val) => height - padBottom - ((val - minVal) / range) * (height - padTop - padBottom);
+
+      const firstPrice = chartPricesUsd[0];
+      const lastPrice = chartPricesUsd[chartPricesUsd.length - 1];
+      const isUp = lastPrice >= firstPrice;
+      const strokeColor = isUp ? '#10b981' : '#f43f5e';
+
+      // 1. Gambar Area Gradient di bawah garis
+      const gradient = ctx.createLinearGradient(0, padTop, 0, height);
+      gradient.addColorStop(0, isUp ? 'rgba(16, 185, 129, 0.30)' : 'rgba(244, 63, 94, 0.30)');
+      gradient.addColorStop(1, 'rgba(15, 23, 42, 0.0)');
+
+      ctx.beginPath();
+      chartPricesUsd.forEach((price, i) => {
+        const x = getX(i);
+        const y = getY(price);
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+      ctx.lineTo(getX(chartPricesUsd.length - 1), height);
+      ctx.lineTo(getX(0), height);
+      ctx.closePath();
+      ctx.fillStyle = gradient;
+      ctx.fill();
+
+      // 2. Gambar Garis Avg Buy (Jika koin dimiliki di Portofolio)
+      if (avgBuyUsd && avgBuyUsd > 0) {
+        const avgY = getY(avgBuyUsd);
+        ctx.save();
+        ctx.beginPath();
+        ctx.setLineDash([4, 4]);
+        ctx.strokeStyle = '#fbbf24'; // Amber-400
+        ctx.lineWidth = 1.2;
+        ctx.moveTo(padLeft, avgY);
+        ctx.lineTo(width - padRight, avgY);
+        ctx.stroke();
+
+        // Label harga avg di sisi kiri
+        ctx.fillStyle = '#fbbf24';
+        ctx.font = '500 9px "JetBrains Mono", monospace';
+        const labelY = avgY > 20 ? avgY - 4 : avgY + 11;
+        ctx.fillText(`Avg: ${formatMoney(holding.avgBuyIdr)}`, padLeft + 2, labelY);
+        ctx.restore();
+      }
+
+      // 3. Gambar Garis Utama Harga
+      ctx.beginPath();
+      chartPricesUsd.forEach((price, i) => {
+        const x = getX(i);
+        const y = getY(price);
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+      ctx.strokeStyle = strokeColor;
+      ctx.lineWidth = 2;
+      ctx.lineJoin = 'round';
+      ctx.stroke();
+
+      // 4. Titik Bersinar di Harga Terkini (Ujung Kanan)
+      const lastX = getX(chartPricesUsd.length - 1);
+      const lastY = getY(lastPrice);
+      ctx.beginPath();
+      ctx.arc(lastX, lastY, 3.5, 0, Math.PI * 2);
+      ctx.fillStyle = strokeColor;
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(lastX, lastY, 7, 0, Math.PI * 2);
+      ctx.fillStyle = isUp ? 'rgba(16, 185, 129, 0.25)' : 'rgba(244, 63, 94, 0.25)';
+      ctx.fill();
+    }
+
+    // ==========================================
+    // 5. LOGIKA SIMULASI TRADING & PORTOFOLIO
     // ==========================================
     function updatePortfolioSummary() {
       let assetValueIdr = 0;
@@ -384,7 +586,31 @@
       pnlEl.className = `text-sm font-semibold font-mono-num mt-0.5 ${totalPnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
     }
 
-    function openTradeModal(symbol) {
+    function updateModalHoldingBanner() {
+      const banner = document.getElementById('modalHoldingBanner');
+      if (!selectedCoin) return;
+      const hold = state.holdings[selectedCoin.symbol];
+
+      if (!hold || hold.amount <= 0) {
+        banner.classList.add('hidden');
+        return;
+      }
+
+      banner.classList.remove('hidden');
+      const currentPriceIdr = selectedCoin.priceUsd * usdtToIdr;
+      const currentValueIdr = hold.amount * currentPriceIdr;
+      const costBasisIdr = hold.amount * hold.avgBuyIdr;
+      const pnlIdr = currentValueIdr - costBasisIdr;
+      const pnlPct = costBasisIdr > 0 ? (pnlIdr / costBasisIdr) * 100 : 0;
+      const isPos = pnlIdr >= 0;
+
+      document.getElementById('modalHoldQty').innerText = `${hold.amount.toFixed(6)} ${selectedCoin.symbol} (${formatMoney(currentValueIdr)})`;
+      const pnlEl = document.getElementById('modalHoldPnl');
+      pnlEl.innerText = `${isPos ? '+' : ''}${formatMoney(pnlIdr)} (${isPos ? '+' : ''}${pnlPct.toFixed(2)}%)`;
+      pnlEl.className = `font-mono-num font-bold ${isPos ? 'text-emerald-400' : 'text-rose-400'}`;
+    }
+
+    function openTradeModal(symbol, defaultMode = 'BUY') {
       selectedCoin = COINS.find(c => c.symbol === symbol);
       if (!selectedCoin || selectedCoin.priceUsd <= 0) {
         showToast('Menunggu data harga live...');
@@ -394,16 +620,22 @@
       document.getElementById('modalCoinName').innerText = `${selectedCoin.name} (${selectedCoin.symbol})`;
       document.getElementById('modalLivePrice').innerText = formatMoney(selectedCoin.priceUsd * usdtToIdr);
       document.getElementById('tradeAmountInput').value = '';
-      setTradeMode('BUY');
+
+      updateModalHoldingBanner();
+      setTradeMode(defaultMode);
+
       const el = document.getElementById('tradeModal');
       el.classList.remove('hidden');
       el.classList.add('flex');
+
+      loadCoinChartData(selectedCoin.pair, currentChartInterval);
     }
 
     function closeTradeModal() {
       const el = document.getElementById('tradeModal');
       el.classList.add('hidden');
       el.classList.remove('flex');
+      selectedCoin = null;
     }
 
     function setTradeMode(mode) {
@@ -532,7 +764,7 @@
     }
 
     // ==========================================
-    // 5. RENDER UI
+    // 6. RENDER UI
     // ==========================================
     function renderMarket() {
       const container = document.getElementById('coinList');
@@ -540,7 +772,7 @@
         const idrPrice = c.priceUsd * usdtToIdr;
         const isPos = c.change24h >= 0;
         return `
-          <div id="row-${c.symbol}" onclick="openTradeModal('${c.symbol}')" class="glass rounded-xl p-3.5 flex items-center justify-between cursor-pointer hover:border-slate-600 transition active:scale-[0.99]">
+          <div id="row-${c.symbol}" onclick="openTradeModal('${c.symbol}', 'BUY')" class="glass rounded-xl p-3.5 flex items-center justify-between cursor-pointer hover:border-slate-600 transition active:scale-[0.99]">
             <div class="flex items-center gap-3">
               <img src="${c.img}" alt="${c.symbol}" class="w-9 h-9 rounded-full bg-slate-800 p-0.5" />
               <div>
@@ -586,12 +818,15 @@
         const isPos = pnlIdr >= 0;
 
         return `
-          <div onclick="openTradeModal('${sym}')" class="glass rounded-xl p-3.5 space-y-2.5 cursor-pointer hover:border-slate-600 transition">
+          <div onclick="openTradeModal('${sym}', 'SELL')" class="glass rounded-xl p-3.5 space-y-2.5 cursor-pointer hover:border-slate-600 transition active:scale-[0.99]">
             <div class="flex items-center justify-between">
               <div class="flex items-center gap-2.5">
                 <img src="${coin?.img || ''}" class="w-8 h-8 rounded-full bg-slate-800" />
                 <div>
-                  <h4 class="text-sm font-bold text-white">${sym}</h4>
+                  <h4 class="text-sm font-bold text-white flex items-center gap-1.5">
+                    ${sym}
+                    <span class="text-[10px] font-medium px-1.5 py-0.5 rounded bg-slate-800 text-cyan-300">Lihat Grafik</span>
+                  </h4>
                   <p class="text-[11px] font-mono-num text-slate-400">${hold.amount.toFixed(6)} ${sym}</p>
                 </div>
               </div>
@@ -649,7 +884,7 @@
     }
 
     // ==========================================
-    // 6. NAVIGASI TAB & TOAST
+    // 7. NAVIGASI TAB & TOAST
     // ==========================================
     function switchTab(tab) {
       activeTab = tab;
@@ -673,13 +908,17 @@
     }
 
     // ==========================================
-    // 7. REGISTRASI SERVICE WORKER & INISIALISASI
+    // 8. REGISTRASI SERVICE WORKER & INISIALISASI
     // ==========================================
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('./sw.js').catch(err => console.warn('SW gagal:', err));
       });
     }
+
+    window.addEventListener('resize', () => {
+      if (selectedCoin) drawCoinChart();
+    });
 
     renderAll();
     fetchUsdtIdrRate();
