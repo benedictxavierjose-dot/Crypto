@@ -1,4 +1,4 @@
-const CACHE_NAME = 'cryptosim-pwa-v1';
+const CACHE_NAME = 'cryptosim-pwa-v2'; // Ubah dari v1 ke v2
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -34,12 +34,23 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Gunakan Network-First untuk halaman HTML agar update kode langsung terlihat
+  if (event.request.mode === 'navigate' || url.endsWith('index.html')) {
+    event.respondWith(
+      fetch(event.request)
+        .then((networkRes) => {
+          const resClone = networkRes.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, resClone));
+          return networkRes;
+        })
+        .catch(() => caches.match('./index.html'))
+    );
+    return;
+  }
+
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
-      return (
-        cachedResponse ||
-        fetch(event.request).catch(() => caches.match('./index.html'))
-      );
+      return cachedResponse || fetch(event.request);
     })
   );
 });
