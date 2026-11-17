@@ -1,4 +1,4 @@
-const CACHE_NAME = 'cryptosim-pwa-v2'; // Ubah dari v1 ke v2
+const CACHE_NAME = 'cryptosim-pwa-v3'; // Ubah dari v1 ke v2
 const STATIC_ASSETS = [
   './',
   './index.html',
